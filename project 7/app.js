@@ -1,73 +1,58 @@
-let tasks = []; // The list of all tasks
-let currentView = "list"; // Current active tab ('list', 'board', 'timer', 'analytics')
-let timerInterval = null; // The timer's "heartbeat"
-let timeLeft = 25 * 60; // Time remaining in seconds (default 25m)
-let initialTime = 25 * 60; // Starting time (to calculate progress ring)
-let focusedTaskId = null; // The task we are currently focusing on
-let currentChart = null; // The chart instance for analytics
+let tasks = [];
+let currentView = "list";
+let timerInterval = null;
+let timeLeft = 25 * 60;
+let initialTime = 25 * 60;
+let focusedTaskId = null;
+let currentChart = null;
 
-// 2. DOM ELEMENTS (References to HTML tags)
 const taskForm = document.getElementById("taskForm");
-const tasksContainer = document.getElementById("tasks"); // List View
-const subtaskList = document.getElementById("subtaskList"); // Subtask inputs
-const viewButtons = document.querySelectorAll(".nav-btn[data-view]"); // Sidebar buttons (Excluding theme btn)
-const viewSections = document.querySelectorAll(".view-section"); // The page sections
+const tasksContainer = document.getElementById("tasks");
+const subtaskList = document.getElementById("subtaskList");
+const viewButtons = document.querySelectorAll(".nav-btn[data-view]");
+const viewSections = document.querySelectorAll(".view-section");
 
-// 3. STARTUP (What happens when the page loads)
 document.addEventListener("DOMContentLoaded", () => {
-  loadTasks(); // Load saved tasks from browser storage
-  setupEventListeners(); // Activate buttons and forms
-  setupTheme(); // Apply Dark/Light mode
-  renderApp(); // Draw the UI
+  loadTasks();
+  setupEventListeners();
+  setupTheme();
+  renderApp();
 });
 
-// 4. CORE FUNCTIONS (The Logic)
-
 function loadTasks() {
-  // Get data from LocalStorage
   const data = localStorage.getItem("taskmate_data");
   if (data) {
-    tasks = JSON.parse(data); // Convert String back to Array
+    tasks = JSON.parse(data);
   }
 }
 
 function saveTasks() {
-  // Save data to LocalStorage
   localStorage.setItem("taskmate_data", JSON.stringify(tasks));
-  renderApp(); // Update the UI whenever data changes
+  renderApp();
 }
 
 function renderApp() {
-  // This function acts as the "Traffic Cop", directing updates
   updateSidebarCount();
 
-  // Safety: Ensure correct view is visible
   viewSections.forEach((el) => el.classList.remove("active"));
   const activeSection = document.getElementById(`view-${currentView}`);
   if (activeSection) activeSection.classList.add("active");
 
-  // Update Nav Buttons
   viewButtons.forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.view === currentView);
   });
 
-  // Only render the active view to save performance
   if (currentView === "list") renderListView();
   if (currentView === "board") renderKanbanBoard();
   if (currentView === "timer") updateTimerUI();
   if (currentView === "analytics") renderCharts();
 
-  // Refresh icons (Lucide library)
   if (window.lucide) lucide.createIcons();
 }
 
-// 5. VIEW SPECIFIC CODE
-
-// --- LIST VIEW ---
 function renderListView() {
-  tasksContainer.innerHTML = ""; // Clear list
+  tasksContainer.innerHTML = "";
 
-  // 1. Filter tasks (Search & Dropdowns)
   const searchTerm = document.getElementById("search").value.toLowerCase();
   const filterStatus = document.getElementById("filterStatus").value;
 
@@ -85,7 +70,6 @@ function renderListView() {
     return;
   }
 
-  // 2. Create HTML for each task
   filteredTasks.forEach((task) => {
     const taskElement = createTaskElement(task);
     tasksContainer.appendChild(taskElement);
@@ -96,7 +80,6 @@ function createTaskElement(task) {
   const div = document.createElement("div");
   div.className = `task ${task.status === "done" ? "completed" : ""}`;
 
-  // Calculate Progress (e.g., "2/4 steps")
   const totalSteps = task.subtasks ? task.subtasks.length : 0;
   const doneSteps = task.subtasks
     ? task.subtasks.filter((s) => s.done).length
@@ -132,26 +115,21 @@ function createTaskElement(task) {
   return div;
 }
 
-// --- KANBAN BOARD ---
 function renderKanbanBoard() {
-  // Columns
   const columns = {
     todo: document.querySelector("#col-todo .kanban-list"),
     doing: document.querySelector("#col-doing .kanban-list"),
     done: document.querySelector("#col-done .kanban-list"),
   };
 
-  // Clear columns
   Object.values(columns).forEach((col) => (col.innerHTML = ""));
 
-  // Distribute tasks to columns
   tasks.forEach((task) => {
     const card = document.createElement("div");
     card.className = "task";
-    card.draggable = true; // Make it draggable
+    card.draggable = true;
     card.innerHTML = `<div class="title">${task.title}</div> <small>${task.priority}</small>`;
 
-    // Drag Events (Simple Version)
     card.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", task.id);
       card.classList.add("dragging");
@@ -163,10 +141,9 @@ function renderKanbanBoard() {
     }
   });
 
-  // Setup Drop Zones
   Object.values(columns).forEach((col) => {
     col.addEventListener("dragover", (e) => {
-      e.preventDefault(); // Allow dropping
+      e.preventDefault();
       col.classList.add("drag-over");
     });
     col.addEventListener("dragleave", () => col.classList.remove("drag-over"));
@@ -174,25 +151,22 @@ function renderKanbanBoard() {
       e.preventDefault();
       col.classList.remove("drag-over");
       const taskId = e.dataTransfer.getData("text/plain");
-      const newStatus = col.dataset.status; // 'todo', 'doing', or 'done'
+      const newStatus = col.dataset.status;
       updateTaskStatus(taskId, newStatus);
     });
   });
 }
 
-// --- FOCUS TIMER ---
 function setupFocusListeners() {
   const select = document.getElementById("timerTaskSelect");
   const changeBtn = document.getElementById("changeTaskBtn");
 
-  // Dropdown Selection
   if (select) {
     select.addEventListener("change", (e) => {
       if (e.target.value) startFocusSession(e.target.value);
     });
   }
 
-  // "Change Task" button
   if (changeBtn) {
     changeBtn.addEventListener("click", () => {
       focusedTaskId = null;
@@ -208,10 +182,8 @@ function refreshFocusDropdown() {
   const select = document.getElementById("timerTaskSelect");
   if (!select) return;
 
-  // Save current selection if any (though usually we are in 'change' mode if seeing this)
   const currentVal = select.value;
 
-  // Clear and Rebuid
   let html = '<option value="">Select a task to focus on...</option>';
   tasks
     .filter((t) => t.status !== "done")
@@ -229,7 +201,6 @@ function startFocusSession(taskId) {
     focusedTaskId = taskId;
     document.getElementById("focusTaskTitle").innerText = task.title;
 
-    // UI Swap
     document.getElementById("timerTaskSelect").parentElement.style.display =
       "none";
     document.getElementById("activeTaskDisplay").style.display = "block";
@@ -237,26 +208,22 @@ function startFocusSession(taskId) {
 }
 
 function updateTimerUI() {
-  // 1. Update Time Text
   const mins = Math.floor(timeLeft / 60);
   const secs = timeLeft % 60;
   document.getElementById("timerDisplay").textContent =
     `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 
-  // 2. Update Ring Progress
   const circle = document.querySelector(".ring-progress");
   const totalCircumference = 848;
   const progress = (initialTime - timeLeft) / initialTime;
   circle.style.strokeDashoffset = totalCircumference * progress;
 
-  // 3. Always refresh dropdown to show new tasks
   refreshFocusDropdown();
 }
 
 function startTimer() {
   if (timerInterval) return;
 
-  // Auto-select first active task if none selected
   if (!focusedTaskId) {
     const first = tasks.find((t) => t.status !== "done");
     if (first) startFocusSession(first.id);
@@ -284,24 +251,19 @@ function stopTimer(message) {
   if (window.lucide) lucide.createIcons();
 
   if (message) {
-    // Notification API
     if ("Notification" in window && Notification.permission === "granted") {
       new Notification("TaskMate", { body: message });
     } else {
       alert(message);
     }
 
-    // Ask to complete task
     if (focusedTaskId && confirm("Mark focussed task as done?")) {
       updateTaskStatus(focusedTaskId, "done");
     }
   }
 }
 
-// 6. EVENT LISTENERS (Interactions)
-
 function setupEventListeners() {
-  // 1. Navigation Switching
   viewButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       currentView = btn.dataset.view;
@@ -309,11 +271,9 @@ function setupEventListeners() {
     });
   });
 
-  // 2. Add New Task
   taskForm.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    // Get Subtasks
     const subtaskItems = [];
     document.querySelectorAll(".subtask-text").forEach((input) => {
       if (input.value) subtaskItems.push({ text: input.value, done: false });
@@ -330,21 +290,19 @@ function setupEventListeners() {
       createdAt: new Date().toISOString(),
     };
 
-    // Check if editing or new
     const existingIndex = tasks.findIndex((t) => t.id === newTask.id);
     if (existingIndex >= 0) {
-      tasks[existingIndex] = newTask; // Update existing
+      tasks[existingIndex] = newTask;
     } else {
-      tasks.unshift(newTask); // Add new to top
+      tasks.unshift(newTask);
     }
 
     saveTasks();
     taskForm.reset();
-    document.getElementById("subtaskList").innerHTML = ""; // Clear subtasks
-    document.getElementById("editingId").value = ""; // Clear edit ID
+    document.getElementById("subtaskList").innerHTML = "";
+    document.getElementById("editingId").value = "";
   });
 
-  // 3. Add Subtask Button
   document.getElementById("addSubtaskBtn").addEventListener("click", () => {
     const div = document.createElement("div");
     div.className = "subtask-row";
@@ -356,7 +314,6 @@ function setupEventListeners() {
     subtaskList.appendChild(div);
   });
 
-  // 4. Timer Buttons
   document.getElementById("timerToggle").addEventListener("click", () => {
     if (timerInterval) stopTimer();
     else startTimer();
@@ -368,7 +325,6 @@ function setupEventListeners() {
     updateTimerUI();
   });
 
-  // 5. Timer Presets (15m, 25m, 45m)
   window.setTimer = (mins) => {
     stopTimer();
     timeLeft = mins * 60;
@@ -376,7 +332,6 @@ function setupEventListeners() {
     updateTimerUI();
   };
 
-  // 6. Data Export
   document.getElementById("exportBtn")?.addEventListener("click", () => {
     const dataStr =
       "data:text/json;charset=utf-8," +
@@ -387,11 +342,9 @@ function setupEventListeners() {
     downloadAnchor.click();
   });
 
-  // 7. Focus Mode Events
   setupFocusListeners();
 }
 
-// Helper: Setup Theme Toggle
 function setupTheme() {
   const savedTheme = localStorage.getItem("taskmate_theme") || "dark";
   applyTheme(savedTheme);
@@ -414,13 +367,10 @@ function applyTheme(theme) {
   }
 }
 
-// 7. HELPER FUNCTIONS (Shortcuts)
-
 function updateSidebarCount() {
   document.getElementById("count").textContent = tasks.length;
 }
 
-// Global functions (called from HTML onclick)
 window.toggleTaskStatus = (id) => {
   const task = tasks.find((t) => t.id === id);
   if (task) {
@@ -446,7 +396,6 @@ window.fillEditForm = (id) => {
   document.getElementById("due").value = task.dueDate;
   document.getElementById("editingId").value = task.id;
 
-  // Switch to List view to see form
   viewButtons[0].click();
 };
 
@@ -458,21 +407,17 @@ window.updateTaskStatus = (id, newStatus) => {
   }
 };
 
-// Analytics (Weekly Progress Chart)
 function renderCharts() {
   const ctx = document.getElementById("chartWeekly");
   if (!window.Chart || !ctx) return;
 
-  // Count status
   const counts = { todo: 0, doing: 0, done: 0 };
   tasks.forEach((t) => counts[t.status]++);
 
-  // Destroy previous chart to prevent layering/lagginess
   if (currentChart) {
     currentChart.destroy();
   }
 
-  // Create New Chart
   currentChart = new Chart(ctx, {
     type: "bar",
     data: {
@@ -488,9 +433,9 @@ function renderCharts() {
     },
     options: {
       responsive: true,
-      animation: { duration: 300 }, // Snappy animation
+      animation: { duration: 300 },
       plugins: {
-        legend: { display: false }, // Cleaner look
+        legend: { display: false },
       },
       scales: {
         y: { beginAtZero: true, ticks: { precision: 0 } },
