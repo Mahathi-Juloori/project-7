@@ -11,7 +11,6 @@
 
   <body>
     <div class="app-container">
-      <!-- Sidebar Navigation -->
       <nav class="sidebar">
         <div class="logo">
           <h2>
@@ -44,7 +43,6 @@
         </div>
       </nav>
 
-      <!-- Main Content Area -->
       <main class="main-content">
         <header>
           <h1><span id="pageTitle">My Tasks</span></h1>
@@ -76,7 +74,6 @@
           </div>
         </header>
 
-        <!-- VIEW 1: LIST (Existing) -->
         <div id="view-list" class="view-section active">
           <div class="top">
             <div class="card">
@@ -115,7 +112,6 @@
                   <div class="field">
                     <label>Subtasks</label>
                     <div id="subtaskList">
-                      <!-- Dynamic inputs go here -->
                     </div>
                     <button
                       type="button"
@@ -171,13 +167,11 @@
                 </select>
               </div>
               <div id="tasks" class="list small">
-                <!-- tasks injected here -->
               </div>
             </div>
           </div>
         </div>
 
-        <!-- VIEW 2: BOARD (Placeholder) -->
         <div id="view-board" class="view-section">
           <div class="kanban-board">
             <div class="kanban-column" id="col-todo">
@@ -195,7 +189,6 @@
           </div>
         </div>
 
-        <!-- VIEW 3: TIMER (Zen Focus Mode) -->
         <div id="view-timer" class="view-section">
           <div class="timer-container" id="timerContainer">
             <div class="focus-header">
@@ -217,7 +210,6 @@
             </div>
 
             <div class="timer-display">
-              <!-- Glowing Ring Container -->
               <div class="glow-ring"></div>
               <svg class="timer-ring" width="300" height="300">
                 <defs>
@@ -266,7 +258,6 @@
           </div>
         </div>
 
-        <!-- VIEW 4: ANALYTICS (Placeholder) -->
         <div id="view-analytics" class="view-section">
           <div class="stats-grid">
             <div class="card stat-card">
@@ -284,4 +275,5 @@
 
     <script src="app.js"></script>
   </body>
+
 </html>
